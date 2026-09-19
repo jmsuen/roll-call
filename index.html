@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>随机点名器</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127904;</text></svg>">
+<style>
+  :root{
+    --bg:#0b1220;
+    --bg-2:#111a2e;
+    --panel:#16213b;
+    --panel-2:#1c2a4a;
+    --line:#2a3a5f;
+    --text:#e8eefc;
+    --muted:#8aa0c6;
+    --accent:#f5b942;
+    --accent-2:#ffd77a;
+    --good:#4ade80;
+    --danger:#f87171;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,-apple-system,sans-serif;
+    background:radial-gradient(1200px 700px at 50% -10%, #1a2a52 0%, var(--bg) 55%);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,textarea{font-family:inherit}
+
+  /* ===== 顶栏 ===== */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 22px;border-bottom:1px solid var(--line);
+    background:rgba(11,18,32,.7);backdrop-filter:blur(8px);
+    position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+  .header-actions{display:flex;gap:8px;align-items:center}
+  .hbtn{
+    padding:8px 14px;border-radius:10px;font-size:13px;color:var(--muted);
+    border:1px solid var(--line);transition:.15s;display:flex;align-items:center;gap:6px;
+  }
+  .hbtn:hover{color:var(--text);border-color:#3d5288;background:var(--panel)}
+  .hbtn.primary{background:var(--accent);color:#2a1e00;border-color:var(--accent);font-weight:600}
+  .hbtn.primary:hover{background:var(--accent-2)}
+
+  /* ===== 主体布局 ===== */
+  .main{
+    flex:1;display:grid;grid-template-columns:1fr 360px;gap:0;
+    max-width:1400px;width:100%;margin:0 auto;
+  }
+  @media (max-width:900px){
+    .main{grid-template-columns:1fr}
+    .side{order:-1;max-height:none;border-top:1px solid var(--line)}
+    .stage{min-height:60vh}
+  }
+
+  /* ===== 舞台 ===== */
+  .stage{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:40px 28px;position:relative;overflow:hidden;
+  }
+  .mode-tag{
+    font-size:12px;color:var(--muted);letter-spacing:2px;
+    border:1px solid var(--line);padding:5px 12px;border-radius:999px;margin-bottom:26px;
+  }
+  .name-display{
+    font-size:clamp(48px,11vw,132px);font-weight:800;letter-spacing:2px;
+    min-height:1.4em;line-height:1.1;text-align:center;
+    background:linear-gradient(180deg,#fff 0%,#c9d6f2 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    transition:transform .12s;
+    word-break:break-all;padding:0 10px;
+  }
+  .name-display.rolling{color:#9db1d8;background:none;-webkit-text-fill-color:#9db1d8}
+  .name-display.picked{
+    background:linear-gradient(180deg,var(--accent-2) 0%,var(--accent) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 60px rgba(245,185,66,.35);
+    animation:pop .45s cubic-bezier(.2,1.4,.4,1);
+  }
+  @keyframes pop{
+    0%{transform:scale(.6);opacity:0}
+    100%{transform:scale(1);opacity:1}
+  }
+  .hint{margin-top:14px;color:var(--muted);font-size:14px;min-height:20px}
+  .roll-btn{
+    margin-top:38px;
+    width:180px;height:180px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #ffd77a, var(--accent) 60%, #d9931a);
+    color:#2a1e00;font-size:24px;font-weight:800;letter-spacing:4px;
+    box-shadow:0 12px 40px rgba(245,185,66,.35), inset 0 -6px 14px rgba(0,0,0,.15);
+    transition:transform .1s, box-shadow .2s;
+    user-select:none;
+  }
+  .roll-btn:hover{transform:translateY(-2px)}
+  .roll-btn:active{transform:scale(.96)}
+  .roll-btn:disabled{filter:grayscale(.4);cursor:not-allowed}
+  .roll-btn .sub{display:block;font-size:12px;font-weight:500;letter-spacing:2px;margin-top:4px;opacity:.75}
+
+  .stats{
+    margin-top:34px;display:flex;gap:26px;color:var(--muted);font-size:13px;
+  }
+  .stats b{color:var(--text);font-size:18px;margin-right:4px}
+
+  /* ===== 侧栏 ===== */
+  .side{
+    border-left:1px solid var(--line);background:rgba(22,33,59,.5);
+    display:flex;flex-direction:column;
+  }
+  .side-section{border-bottom:1px solid var(--line);padding:16px 18px}
+  .side-title{
+    font-size:12px;color:var(--muted);letter-spacing:1.5px;
+    text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;
+  }
+  @media (max-width:640px){
+    input, textarea{font-size:16px}
+    .side-section{padding:14px 16px}
+    .name-display{font-size:clamp(44px,14vw,96px)}
+    .roll-btn{width:150px;height:150px;font-size:21px}
+  }
+  .row{display:flex;gap:8px}
+  .input{
+    flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;
+    padding:9px 12px;color:var(--text);font-size:14px;outline:none;transition:.15s;
+  }
+  .input:focus{border-color:var(--accent)}
+  textarea.input{resize:vertical;min-height:78px;line-height:1.5}
+  .sbtn{
+    padding:9px 14px;border-radius:10px;font-size:13px;background:var(--panel-2);
+    border:1px solid var(--line);transition:.15s;white-space:nowrap;
+  }
+  .sbtn:hover{border-color:#3d5288;background:#24355e}
+  .sbtn.accent{background:var(--accent);color:#2a1e00;border-color:var(--accent);font-weight:600}
+  .sbtn.danger{color:var(--danger)}
+  .sbtn.sm{padding:6px 10px;font-size:12px}
+
+  /* 开关 */
+  .switch-row{display:flex;align-items:center;justify-content:space-between;font-size:14px}
+  .switch{position:relative;width:40px;height:22px;background:var(--panel-2);border-radius:999px;transition:.2s;border:1px solid var(--line)}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:.2s}
+  .switch.on{background:var(--accent);border-color:var(--accent)}
+  .switch.on::after{left:20px;background:#2a1e00}
+
+  /* 名单列表 */
+  .name-list{
+    flex:1;overflow-y:auto;max-height:340px;padding:8px 18px;
+  }
+  .name-list::-webkit-scrollbar{width:6px}
+  .name-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+  .empty-tip{color:var(--muted);font-size:13px;text-align:center;padding:24px 10px;line-height:1.7}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--panel);border:1px solid var(--line);
+    padding:6px 10px;border-radius:9px;font-size:13px;margin:0 6px 8px 0;
+  }
+  .chip.used{opacity:.38;text-decoration:line-through}
+  .chip.cur{border-color:var(--accent);color:var(--accent-2)}
+  .chip button{color:var(--muted);font-size:14px;line-height:1;padding:2px}
+  .chip button:hover{color:var(--danger)}
+
+  /* 历史 */
+  .history-list{max-height:160px;overflow-y:auto;font-size:13px;line-height:1.9;color:var(--muted)}
+  .history-list .h-item{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:2px 0}
+  .history-list .h-item b{color:var(--text);font-weight:600}
+
+  /* toast */
+  #toast{
+    position:fixed;left:50%;bottom:36px;transform:translateX(-50%) translateY(20px);
+    background:var(--panel-2);border:1px solid var(--line);padding:10px 18px;border-radius:10px;
+    font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:99;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot"></span>随机点名器</div>
+  <div class="header-actions">
+    <button class="hbtn" id="btnExport" title="导出名单为 txt">导出名单</button>
+    <button class="hbtn danger" id="btnClearAll" title="清空全部名单">清空名单</button>
+    <button class="hbtn primary" id="btnToggleSide" style="display:none">名单</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- 舞台 -->
+  <section class="stage">
+    <div class="mode-tag" id="modeTag">可重复抽取</div>
+    <div class="name-display" id="display">准备就绪</div>
+    <div class="hint" id="hint">在右侧录入名单后，点击按钮开始</div>
+    <button class="roll-btn" id="rollBtn">开始<span class="sub">START</span></button>
+    <div class="stats">
+      <span>总人数 <b id="statTotal">0</b></span>
+      <span>已抽 <b id="statUsed">0</b></span>
+      <span>剩余 <b id="statLeft">0</b></span>
+    </div>
+  </section>
+
+  <!-- 侧栏 -->
+  <aside class="side">
+    <div class="side-section">
+      <div class="side-title">添加单个姓名</div>
+      <div class="row">
+        <input class="input" id="singleInput" placeholder="输入姓名后回车" maxlength="20">
+        <button class="sbtn accent" id="btnAddSingle">添加</button>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-title">批量导入</div>
+      <div class="row" style="margin-bottom:8px">
+        <textarea class="input" id="batchInput" placeholder="每行一个姓名，或用逗号 / 顿号分隔"></textarea>
+      </div>
+      <div class="row">
+        <button class="sbtn" id="btnBatch">粘贴导入</button>
+        <button class="sbtn" id="btnFile">读取文件（txt / csv）</button>
+        <input type="file" id="fileInput" accept=".txt,.csv,.tsv" hidden>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-title">抽取设置</div>
+      <div class="switch-row">
+        <span>不重复抽取（抽过的不再抽）</span>
+        <button class="switch" id="noRepeatSwitch" aria-label="不重复模式"></button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="sbtn sm" id="btnResetUsed">重置已抽记录</button>
+      </div>
+    </div>
+
+    <div class="side-title" style="padding:14px 18px 0">名单（<span id="listCount">0</span>）· 自动保存在本机</div>
+    <div class="name-list" id="nameList"></div>
+
+    <div class="side-section" style="border-bottom:none">
+      <div class="side-title">本轮历史
+        <button class="sbtn sm" id="btnClearHistory" style="padding:2px 8px">清空</button>
+      </div>
+      <div class="history-list" id="historyList"><div class="empty-tip">暂无抽取记录</div></div>
+    </div>
+  </aside>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  const STORE_KEY = 'rollcall_names_v1';
+  const USED_KEY  = 'rollcall_used_v1';
+  const NOREPEAT_KEY = 'rollcall_norepeat_v1';
+
+  let names = load(STORE_KEY, []);
+  let used  = load(USED_KEY, []);
+  let noRepeat = load(NOREPEAT_KEY, false);
+
+  let rolling = false, timer = null;
+
+  const $ = id => document.getElementById(id);
+  const display = $('display'), hint = $('hint'), rollBtn = $('rollBtn');
+
+  function load(key, def){
+    try{ const v = JSON.parse(localStorage.getItem(key)); return v == null ? def : v; }
+    catch(e){ return def; }
+  }
+  function save(){
+    localStorage.setItem(STORE_KEY, JSON.stringify(names));
+    localStorage.setItem(USED_KEY, JSON.stringify(used));
+    localStorage.setItem(NOREPEAT_KEY, JSON.stringify(noRepeat));
+  }
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  /* ---------- 渲染 ---------- */
+  function render(){
+    // 统计
+    const usedSet = new Set(used);
+    const left = noRepeat ? names.filter(n=>!usedSet.has(n)).length : names.length;
+    $('statTotal').textContent = names.length;
+    $('statUsed').textContent = used.length;
+    $('statLeft').textContent = left;
+    $('listCount').textContent = names.length;
+    $('modeTag').textContent = noRepeat ? '不重复抽取' : '可重复抽取';
+    $('noRepeatSwitch').classList.toggle('on', noRepeat);
+
+    // 名单 chips
+    const list = $('nameList');
+    if(!names.length){
+      list.innerHTML = '<div class="empty-tip">名单为空<br>请先添加或导入姓名</div>';
+    } else {
+      list.innerHTML = names.map((n,i)=>{
+        const u = usedSet.has(n) ? 'used' : '';
+        return `<span class="chip ${u}">${escapeHtml(n)}<button data-i="${i}" title="删除">×</button></span>`;
+      }).join('');
+      list.querySelectorAll('button').forEach(b=>{
+        b.onclick = ()=>{ names.splice(+b.dataset.i,1); used = used.filter(x=>x!==names[+b.dataset.i]); save(); render(); };
+      });
+    }
+    save();
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  /* ---------- 添加 ---------- */
+  function addNames(arr){
+    const fresh = arr.map(s=>s.trim()).filter(Boolean);
+    if(!fresh.length){ toast('没有可添加的姓名'); return 0; }
+    let added = 0;
+    fresh.forEach(n=>{
+      if(!names.includes(n)){ names.push(n); added++; }
+    });
+    render();
+    toast(`添加 ${added} 人，跳过重复 ${fresh.length-added} 人`);
+    return added;
+  }
+  $('singleInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addSingle(); });
+  function addSingle(){
+    const v = $('singleInput').value;
+    if(addNames([v]) > 0) $('singleInput').value = '';
+  }
+  $('btnAddSingle').onclick = addSingle;
+
+  $('btnBatch').onclick = ()=>{
+    const raw = $('batchInput').value;
+    const arr = raw.split(/[\n,，、;；\t]+/);
+    if(addNames(arr) > 0) $('batchInput').value = '';
+  };
+
+  $('btnFile').onclick = ()=> $('fileInput').click();
+  $('fileInput').onchange = e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const arr = String(reader.result).split(/[\n,，、;；\t\r]+/);
+      addNames(arr);
+    };
+    reader.readAsText(f);
+    e.target.value = '';
+  };
+
+  /* ---------- 设置 ---------- */
+  $('noRepeatSwitch').onclick = ()=>{ noRepeat = !noRepeat; save(); render(); toast(noRepeat?'不重复模式已开启':'可重复模式'); };
+  $('btnResetUsed').onclick = ()=>{ used = []; save(); render(); toast('已抽记录已重置'); };
+  $('btnClearHistory').onclick = ()=>{ $('historyList').innerHTML='<div class="empty-tip">暂无抽取记录</div>'; };
+
+  $('btnClearAll').onclick = ()=>{
+    if(!names.length){ toast('名单已是空的'); return; }
+    if(confirm('确定清空全部名单与抽取记录？此操作不可恢复。')){
+      names = []; used = []; render();
+      display.textContent = '准备就绪'; display.className = 'name-display';
+      hint.textContent = '请先添加或导入姓名';
+    }
+  };
+  $('btnExport').onclick = ()=>{
+    if(!names.length){ toast('名单为空'); return; }
+    const blob = new Blob([names.join('\n')], {type:'text/plain;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '名单.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  /* ---------- 点名 ---------- */
+  function pool(){
+    if(!noRepeat) return names.slice();
+    const usedSet = new Set(used);
+    return names.filter(n=>!usedSet.has(n));
+  }
+
+  function startRoll(){
+    if(rolling) return;
+    if(!names.length){ toast('请先添加或导入名单'); return; }
+    const p = pool();
+    if(!p.length){
+      if(noRepeat) toast('所有人都已抽完，点击"重置已抽记录"重新开始');
+      return;
+    }
+    rolling = true;
+    rollBtn.disabled = true;
+    display.classList.add('rolling');
+    hint.textContent = '';
+
+    // 缓动：前快后慢，约 2.8s
+    const duration = 2800;
+    const start = performance.now();
+    let last = 0;
+    function frame(now){
+      const t = (now - start) / duration;
+      if(t >= 1){ finish(); return; }
+      // 间隔从 40ms 逐渐增到 220ms
+      const interval = 40 + t*t*t * 200;
+      if(now - last >= interval){
+        last = now;
+        const r = p[Math.floor(Math.random()*p.length)];
+        display.textContent = r;
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function finish(){
+    const p = pool();
+    const chosen = p[Math.floor(Math.random()*p.length)];
+    display.textContent = chosen;
+    display.classList.remove('rolling');
+    display.classList.add('picked');
+    rollBtn.disabled = false;
+    rolling = false;
+    hint.textContent = '恭喜！';
+
+    used.push(chosen);
+    render();
+    addHistory(chosen);
+  }
+
+  function addHistory(name){
+    const box = $('historyList');
+    const first = box.querySelector('.empty-tip');
+    if(first) first.remove();
+    const div = document.createElement('div');
+    div.className = 'h-item';
+    const time = new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    div.innerHTML = `<b></b><span>${time}</span>`;
+    div.querySelector('b').textContent = name;
+    box.insertBefore(div, box.firstChild);
+  }
+
+  rollBtn.onclick = startRoll;
+
+  /* ---------- 初始化 ---------- */
+  render();
+  if(names.length){
+    display.textContent = `共 ${names.length} 人`;
+    hint.textContent = '点击按钮开始点名';
+  }
+})();
+</script>
+</body>
+</html>
