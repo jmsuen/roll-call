@@ -233,6 +233,10 @@
         <span>不重复抽取（抽过的不再抽）</span>
         <button class="switch" id="noRepeatSwitch" aria-label="不重复模式"></button>
       </div>
+      <div class="switch-row" style="margin-top:12px">
+        <span>抽中后语音播报姓名</span>
+        <button class="switch" id="voiceSwitch" aria-label="语音播报"></button>
+      </div>
       <div class="row" style="margin-top:12px">
         <button class="sbtn sm" id="btnResetUsed">重置已抽记录</button>
       </div>
@@ -257,10 +261,12 @@
   const STORE_KEY = 'rollcall_names_v1';
   const USED_KEY  = 'rollcall_used_v1';
   const NOREPEAT_KEY = 'rollcall_norepeat_v1';
+  const VOICE_KEY = 'rollcall_voice_v1';
 
   let names = load(STORE_KEY, []);
   let used  = load(USED_KEY, []);
   let noRepeat = load(NOREPEAT_KEY, false);
+  let voiceOn = load(VOICE_KEY, true);
 
   let rolling = false, timer = null;
 
@@ -275,6 +281,7 @@
     localStorage.setItem(STORE_KEY, JSON.stringify(names));
     localStorage.setItem(USED_KEY, JSON.stringify(used));
     localStorage.setItem(NOREPEAT_KEY, JSON.stringify(noRepeat));
+    localStorage.setItem(VOICE_KEY, JSON.stringify(voiceOn));
   }
   function toast(msg){
     const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -292,6 +299,7 @@
     $('listCount').textContent = names.length;
     $('modeTag').textContent = noRepeat ? '不重复抽取' : '可重复抽取';
     $('noRepeatSwitch').classList.toggle('on', noRepeat);
+    $('voiceSwitch').classList.toggle('on', voiceOn);
 
     // 名单 chips
     const list = $('nameList');
@@ -351,6 +359,11 @@
 
   /* ---------- 设置 ---------- */
   $('noRepeatSwitch').onclick = ()=>{ noRepeat = !noRepeat; save(); render(); toast(noRepeat?'不重复模式已开启':'可重复模式'); };
+  $('voiceSwitch').onclick = ()=>{
+    voiceOn = !voiceOn; save(); render();
+    if(voiceOn){ speak('语音播报已开启'); }
+    else { try{ speechSynthesis.cancel(); }catch(e){} toast('语音播报已关闭'); }
+  };
   $('btnResetUsed').onclick = ()=>{ used = []; save(); render(); toast('已抽记录已重置'); };
   $('btnClearHistory').onclick = ()=>{ $('historyList').innerHTML='<div class="empty-tip">暂无抽取记录</div>'; };
 
@@ -391,6 +404,7 @@
     rollBtn.disabled = true;
     display.classList.add('rolling');
     hint.textContent = '';
+    try{ speechSynthesis.cancel(); }catch(e){}
 
     // 缓动：前快后慢，约 2.8s
     const duration = 2800;
@@ -424,6 +438,22 @@
     used.push(chosen);
     render();
     addHistory(chosen);
+    speak(chosen);
+  }
+
+  function speak(text){
+    if(!voiceOn || !('speechSynthesis' in window)) return;
+    try{
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-CN';
+      u.rate = 0.95;
+      u.pitch = 1.0;
+      const vs = speechSynthesis.getVoices();
+      const zh = vs.find(v => /zh[-_]?CN/i.test(v.lang)) || vs.find(v => /chinese|中文|普通话/i.test(v.name));
+      if(zh) u.voice = zh;
+      speechSynthesis.speak(u);
+    }catch(e){}
   }
 
   function addHistory(name){
