@@ -4,477 +4,1002 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>随机点名器</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127904;</text></svg>">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%231c1c26' stroke='%23f5c451' stroke-width='7'/%3E%3Ccircle cx='50' cy='50' r='15' fill='%23f5c451'/%3E%3C/svg%3E">
 <style>
-  :root{
-    --bg:#0b1220;
-    --bg-2:#111a2e;
-    --panel:#16213b;
-    --panel-2:#1c2a4a;
-    --line:#2a3a5f;
-    --text:#e8eefc;
-    --muted:#8aa0c6;
-    --accent:#f5b942;
-    --accent-2:#ffd77a;
-    --good:#4ade80;
-    --danger:#f87171;
-    --radius:14px;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{
-    font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,-apple-system,sans-serif;
-    background:radial-gradient(1200px 700px at 50% -10%, #1a2a52 0%, var(--bg) 55%);
-    color:var(--text);
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-  }
-  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-  input,textarea{font-family:inherit}
+:root{
+  --bg:#0f0f14;
+  --panel:#1c1c26;
+  --panel-2:#16161d;
+  --border:#2e2e3d;
+  --border-hi:#3a3a4d;
+  --text:#e8e8f0;
+  --text-dim:#8a8a9a;
+  --text-faint:#5a5a6a;
+  --gold:#f5c451;
+  --gold-2:#e0a92e;
+  --gold-glow:rgba(245,196,81,.35);
+  --danger:#e05757;
+  --accent:#6c8cff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased;
+}
 
-  /* ===== 顶栏 ===== */
-  header{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:14px 22px;border-bottom:1px solid var(--line);
-    background:rgba(11,18,32,.7);backdrop-filter:blur(8px);
-    position:sticky;top:0;z-index:20;
-  }
-  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
-  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
-  .header-actions{display:flex;gap:8px;align-items:center}
-  .hbtn{
-    padding:8px 14px;border-radius:10px;font-size:13px;color:var(--muted);
-    border:1px solid var(--line);transition:.15s;display:flex;align-items:center;gap:6px;
-  }
-  .hbtn:hover{color:var(--text);border-color:#3d5288;background:var(--panel)}
-  .hbtn.primary{background:var(--accent);color:#2a1e00;border-color:var(--accent);font-weight:600}
-  .hbtn.primary:hover{background:var(--accent-2)}
+.app{display:flex;height:100vh;height:100dvh;overflow:hidden}
 
-  /* ===== 主体布局 ===== */
-  .main{
-    flex:1;display:grid;grid-template-columns:1fr 360px;gap:0;
-    max-width:1400px;width:100%;margin:0 auto;
-  }
-  @media (max-width:900px){
-    .main{grid-template-columns:1fr}
-    .side{order:-1;max-height:none;border-top:1px solid var(--line)}
-    .stage{min-height:60vh}
-  }
+/* ---- 舞台 ---- */
+.stage{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;min-width:0;
+  background:radial-gradient(ellipse at center,#1a1a24 0%,#0a0a0f 100%);
+}
+.stage::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 50% 45%,rgba(108,140,255,.06),transparent 60%);
+}
+.sidebar-toggle{
+  position:absolute;top:20px;right:20px;width:40px;height:40px;border-radius:10px;
+  background:rgba(28,28,38,.85);border:1px solid var(--border);color:var(--text-dim);
+  font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;z-index:10;backdrop-filter:blur(8px);
+}
+.sidebar-toggle:hover{color:var(--text);border-color:var(--border-hi);background:rgba(35,35,47,.9)}
+.stage-content{display:flex;flex-direction:column;align-items:center;gap:50px;position:relative;z-index:1;padding:20px}
+.name-display{
+  font-weight:700;letter-spacing:6px;color:var(--text-dim);
+  transition:color .3s,text-shadow .3s,transform .3s;
+  min-height:1.2em;display:flex;align-items:center;justify-content:center;
+  padding:0 20px;text-align:center;line-height:1.1;user-select:none;
+  font-size:clamp(48px,9vw,128px);
+}
+.name-display.size-small{font-size:clamp(36px,6vw,80px)}
+.name-display.size-medium{font-size:clamp(48px,9vw,128px)}
+.name-display.size-large{font-size:clamp(64px,13vw,180px)}
+.name-display.rolling{color:var(--text);text-shadow:0 0 30px rgba(108,140,255,.4);transition:none}
+.name-display.winner{
+  color:var(--gold);
+  text-shadow:0 0 40px var(--gold-glow),0 0 80px rgba(245,196,81,.2);
+  animation:winnerPop .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes winnerPop{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
+.start-btn{
+  width:140px;height:140px;border-radius:50%;border:none;
+  background:linear-gradient(145deg,#f5c451,#e0a92e);color:#1a1200;
+  font-size:28px;font-weight:700;letter-spacing:4px;cursor:pointer;
+  box-shadow:0 0 0 8px rgba(245,196,81,.08),0 10px 40px rgba(245,196,81,.3),
+    inset 0 -4px 12px rgba(0,0,0,.15),inset 0 4px 12px rgba(255,255,255,.3);
+  transition:all .25s cubic-bezier(.34,1.56,.64,1);
+}
+.start-btn:hover:not(:disabled){
+  transform:scale(1.05);
+  box-shadow:0 0 0 12px rgba(245,196,81,.1),0 15px 50px rgba(245,196,81,.45),
+    inset 0 -4px 12px rgba(0,0,0,.15),inset 0 4px 12px rgba(255,255,255,.3);
+}
+.start-btn:active:not(:disabled){transform:scale(.96)}
+.start-btn:disabled{cursor:not-allowed;opacity:.5;filter:grayscale(.5)}
+.stage-hint{
+  position:absolute;bottom:30px;color:var(--text-faint);font-size:13px;letter-spacing:1px;
+  transition:color .3s;
+}
 
-  /* ===== 舞台 ===== */
-  .stage{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:40px 28px;position:relative;overflow:hidden;
-  }
-  .mode-tag{
-    font-size:12px;color:var(--muted);letter-spacing:2px;
-    border:1px solid var(--line);padding:5px 12px;border-radius:999px;margin-bottom:26px;
-  }
-  .name-display{
-    font-size:clamp(48px,11vw,132px);font-weight:800;letter-spacing:2px;
-    min-height:1.4em;line-height:1.1;text-align:center;
-    background:linear-gradient(180deg,#fff 0%,#c9d6f2 100%);
-    -webkit-background-clip:text;background-clip:text;color:transparent;
-    transition:transform .12s;
-    word-break:break-all;padding:0 10px;
-  }
-  .name-display.rolling{color:#9db1d8;background:none;-webkit-text-fill-color:#9db1d8}
-  .name-display.picked{
-    background:linear-gradient(180deg,var(--accent-2) 0%,var(--accent) 100%);
-    -webkit-background-clip:text;background-clip:text;color:transparent;
-    text-shadow:0 0 60px rgba(245,185,66,.35);
-    animation:pop .45s cubic-bezier(.2,1.4,.4,1);
-  }
-  @keyframes pop{
-    0%{transform:scale(.6);opacity:0}
-    100%{transform:scale(1);opacity:1}
-  }
-  .hint{margin-top:14px;color:var(--muted);font-size:14px;min-height:20px}
-  .roll-btn{
-    margin-top:38px;
-    width:180px;height:180px;border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #ffd77a, var(--accent) 60%, #d9931a);
-    color:#2a1e00;font-size:24px;font-weight:800;letter-spacing:4px;
-    box-shadow:0 12px 40px rgba(245,185,66,.35), inset 0 -6px 14px rgba(0,0,0,.15);
-    transition:transform .1s, box-shadow .2s;
-    user-select:none;
-  }
-  .roll-btn:hover{transform:translateY(-2px)}
-  .roll-btn:active{transform:scale(.96)}
-  .roll-btn:disabled{filter:grayscale(.4);cursor:not-allowed}
-  .roll-btn .sub{display:block;font-size:12px;font-weight:500;letter-spacing:2px;margin-top:4px;opacity:.75}
+/* ---- 侧栏 ---- */
+.sidebar{
+  width:340px;flex-shrink:0;background:var(--panel-2);border-left:1px solid var(--border);
+  overflow:hidden;transition:width .3s cubic-bezier(.4,0,.2,1);
+}
+.sidebar.collapsed{width:0;border-left:none}
+.sidebar-inner{
+  width:340px;height:100%;display:flex;flex-direction:column;
+  padding:16px;gap:10px;overflow:hidden;
+}
 
-  .stats{
-    margin-top:34px;display:flex;gap:26px;color:var(--muted);font-size:13px;
-  }
-  .stats b{color:var(--text);font-size:18px;margin-right:4px}
+/* ---- 分区 ---- */
+.section{
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;display:flex;flex-direction:column;flex-shrink:0;min-height:0;
+}
+.section[data-key="history"]{flex:1 1 0;min-height:140px}
+.section[data-key="history"].collapsed{flex:0 0 auto;min-height:0}
+.section[data-key="history"] .section-body{flex:1;min-height:0}
 
-  /* ===== 侧栏 ===== */
-  .side{
-    border-left:1px solid var(--line);background:rgba(22,33,59,.5);
-    display:flex;flex-direction:column;
-  }
-  .side-section{border-bottom:1px solid var(--line);padding:16px 18px}
-  .side-title{
-    font-size:12px;color:var(--muted);letter-spacing:1.5px;
-    text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;
-  }
-  @media (max-width:640px){
-    input, textarea{font-size:16px}
-    .side-section{padding:14px 16px}
-    .name-display{font-size:clamp(44px,14vw,96px)}
-    .roll-btn{width:150px;height:150px;font-size:21px}
-  }
-  .row{display:flex;gap:8px}
-  .input{
-    flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;
-    padding:9px 12px;color:var(--text);font-size:14px;outline:none;transition:.15s;
-  }
-  .input:focus{border-color:var(--accent)}
-  textarea.input{resize:vertical;min-height:78px;line-height:1.5}
-  .sbtn{
-    padding:9px 14px;border-radius:10px;font-size:13px;background:var(--panel-2);
-    border:1px solid var(--line);transition:.15s;white-space:nowrap;
-  }
-  .sbtn:hover{border-color:#3d5288;background:#24355e}
-  .sbtn.accent{background:var(--accent);color:#2a1e00;border-color:var(--accent);font-weight:600}
-  .sbtn.danger{color:var(--danger)}
-  .sbtn.sm{padding:6px 10px;font-size:12px}
+.section-head{
+  display:flex;align-items:center;gap:8px;width:100%;padding:13px 15px;
+  background:none;border:none;color:var(--text);font-size:15px;font-weight:600;
+  letter-spacing:.5px;cursor:pointer;text-align:left;font-family:inherit;
+  flex-shrink:0;transition:background .15s;
+}
+.section-head:hover{background:rgba(255,255,255,.03)}
+.section-title{flex:1}
+.section-sub{color:var(--text-faint);font-size:13px;font-weight:400;margin-right:4px}
+.section-arrow{color:var(--text-faint);font-size:11px;transition:transform .25s;display:inline-block}
+.section.collapsed .section-arrow{transform:rotate(-90deg)}
 
-  /* 开关 */
-  .switch-row{display:flex;align-items:center;justify-content:space-between;font-size:14px}
-  .switch{position:relative;width:40px;height:22px;background:var(--panel-2);border-radius:999px;transition:.2s;border:1px solid var(--line)}
-  .switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:.2s}
-  .switch.on{background:var(--accent);border-color:var(--accent)}
-  .switch.on::after{left:20px;background:#2a1e00}
+.section-body{
+  display:grid;grid-template-rows:1fr;min-height:0;
+  transition:grid-template-rows .25s cubic-bezier(.4,0,.2,1);
+}
+.section.collapsed .section-body{grid-template-rows:0fr}
+.section-inner{
+  min-height:0;overflow:hidden;padding:0 15px 13px;
+  transition:padding .25s;
+}
+.section.collapsed .section-inner{padding-top:0;padding-bottom:0}
 
-  /* 名单列表 */
-  .name-list{
-    flex:1;overflow-y:auto;max-height:340px;padding:8px 18px;
-  }
-  .name-list::-webkit-scrollbar{width:6px}
-  .name-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
-  .empty-tip{color:var(--muted);font-size:13px;text-align:center;padding:24px 10px;line-height:1.7}
-  .chip{
-    display:inline-flex;align-items:center;gap:6px;
-    background:var(--panel);border:1px solid var(--line);
-    padding:6px 10px;border-radius:9px;font-size:13px;margin:0 6px 8px 0;
-  }
-  .chip.used{opacity:.38;text-decoration:line-through}
-  .chip.cur{border-color:var(--accent);color:var(--accent-2)}
-  .chip button{color:var(--muted);font-size:14px;line-height:1;padding:2px}
-  .chip button:hover{color:var(--danger)}
+.section[data-key="preview"] .section-inner{max-height:180px}
+.section[data-key="preview"]:not(.collapsed) .section-inner{overflow-y:auto}
 
-  /* 历史 */
-  .history-list{max-height:160px;overflow-y:auto;font-size:13px;line-height:1.9;color:var(--muted)}
-  .history-list .h-item{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:2px 0}
-  .history-list .h-item b{color:var(--text);font-weight:600}
+.section[data-key="history"] .section-inner{
+  display:flex;flex-direction:column;gap:8px;overflow:hidden;
+}
+.history-tools{flex-shrink:0;display:flex;justify-content:flex-end}
+.section[data-key="history"] .history-list{
+  flex:1;min-height:0;overflow-y:auto;
+}
 
-  /* toast */
-  #toast{
-    position:fixed;left:50%;bottom:36px;transform:translateX(-50%) translateY(20px);
-    background:var(--panel-2);border:1px solid var(--line);padding:10px 18px;border-radius:10px;
-    font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:99;
-  }
-  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ---- 更多设置（二级折叠） ---- */
+.sub-collapse{
+  margin-top:10px;border-top:1px solid var(--border);padding-top:4px;
+}
+.sub-head{
+  display:flex;align-items:center;gap:8px;width:100%;padding:7px 0;
+  background:none;border:none;color:var(--text-dim);font-size:13px;
+  font-family:inherit;cursor:pointer;text-align:left;transition:color .15s;
+}
+.sub-head:hover{color:var(--text)}
+.sub-head .section-title{font-weight:500}
+.sub-collapse.collapsed .section-arrow{transform:rotate(-90deg)}
+.sub-body{
+  display:grid;grid-template-rows:1fr;min-height:0;
+  transition:grid-template-rows .25s cubic-bezier(.4,0,.2,1);
+}
+.sub-collapse.collapsed .sub-body{grid-template-rows:0fr}
+.sub-inner{min-height:0;overflow:hidden}
+
+/* ---- 开关 ---- */
+.switch-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 0;cursor:pointer;user-select:none;
+}
+.switch-label{font-size:14px;color:var(--text)}
+.switch-input{display:none}
+.switch{
+  position:relative;width:42px;height:24px;background:#33333f;border-radius:12px;
+  transition:background .2s;flex-shrink:0;
+}
+.switch::after{
+  content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;
+  border-radius:50%;background:#888;transition:transform .2s,background .2s;
+}
+.switch-input:checked + .switch{background:rgba(108,140,255,.3)}
+.switch-input:checked + .switch::after{transform:translateX(18px);background:var(--accent)}
+
+/* ---- 配置行 ---- */
+.config-row{margin-top:12px}
+.config-row:first-child{margin-top:4px}
+.config-label{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:14px;color:var(--text);margin-bottom:7px;
+}
+.config-value{color:var(--gold);font-size:13px;font-variant-numeric:tabular-nums}
+input[type="range"]{
+  width:100%;height:6px;border-radius:3px;accent-color:var(--gold);cursor:pointer;
+  background:rgba(255,255,255,.08);outline:none;
+}
+.segment{
+  display:flex;background:rgba(0,0,0,.25);border:1px solid var(--border);
+  border-radius:8px;padding:3px;gap:3px;
+}
+.segment button{
+  flex:1;padding:7px 8px;border:none;background:none;color:var(--text-dim);
+  font-size:13px;font-family:inherit;cursor:pointer;border-radius:6px;
+  transition:all .15s;
+}
+.segment button:hover{color:var(--text)}
+.segment button.active{background:rgba(108,140,255,.2);color:#a0b4ff}
+
+/* ---- 名单 chip ---- */
+.name-list{display:flex;flex-wrap:wrap;gap:6px}
+.name-chip{
+  padding:5px 9px 5px 11px;background:rgba(255,255,255,.05);
+  border:1px solid var(--border);border-radius:6px;font-size:13px;
+  color:var(--text);display:inline-flex;align-items:center;gap:6px;
+  transition:all .15s;
+}
+.name-chip.drawn{text-decoration:line-through;color:var(--text-faint);opacity:.55}
+.name-chip .remove{
+  cursor:pointer;color:var(--text-faint);font-size:15px;line-height:1;
+  padding:0 2px;transition:color .15s;
+}
+.name-chip .remove:hover{color:var(--danger)}
+.empty-hint{color:var(--text-faint);font-size:13px;padding:4px 0;text-align:center;width:100%}
+
+/* ---- 历史 ---- */
+.history-list{display:flex;flex-direction:column;gap:4px}
+.history-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:7px 11px;background:rgba(255,255,255,.03);border-radius:6px;font-size:13px;
+}
+.history-item .name{color:var(--gold);font-weight:600}
+.history-item .time{color:var(--text-faint);font-size:12px;font-variant-numeric:tabular-nums}
+
+/* ---- 表单 ---- */
+.input-area{
+  width:100%;height:84px;padding:9px 11px;background:rgba(0,0,0,.25);
+  border:1px solid var(--border);border-radius:8px;color:var(--text);
+  font-size:13px;font-family:inherit;resize:none;outline:none;transition:border-color .2s;
+}
+.input-area:focus{border-color:var(--accent)}
+.input-area::placeholder{color:var(--text-faint)}
+.input-text{
+  flex:1;padding:9px 11px;background:rgba(0,0,0,.25);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:14px;font-family:inherit;
+  outline:none;transition:border-color .2s;min-width:0;
+}
+.input-text:focus{border-color:var(--accent)}
+.input-text::placeholder{color:var(--text-faint)}
+.input-row,.btn-row{display:flex;gap:8px}
+.btn-row{margin-top:8px}
+.btn-row .btn{flex:1}
+.input-row .btn{flex-shrink:0}
+.bulk-hint{
+  margin-top:10px;margin-bottom:6px;color:var(--text-faint);
+  font-size:12px;letter-spacing:.5px;
+}
+
+/* ---- 按钮 ---- */
+.btn{
+  padding:9px 15px;border-radius:8px;border:1px solid var(--border);
+  background:rgba(255,255,255,.04);color:var(--text);font-size:13px;
+  cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;
+}
+.btn:hover{background:rgba(255,255,255,.08);border-color:var(--border-hi)}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:rgba(108,140,255,.15);border-color:rgba(108,140,255,.4);color:#a0b4ff}
+.btn-primary:hover{background:rgba(108,140,255,.25)}
+.btn-mini{padding:6px 12px;font-size:12px;color:var(--text-dim)}
+.btn-mini:hover{color:var(--text)}
+
+.actions{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0;
+  padding-top:4px;
+}
+.actions .btn{width:100%;padding:9px 6px;font-size:12px;color:var(--text-dim)}
+.actions .btn:hover{color:var(--text)}
+.actions .btn-danger:hover{
+  background:rgba(224,87,87,.12);border-color:rgba(224,87,87,.4);color:#e08080;
+}
 </style>
 </head>
 <body>
-
-<header>
-  <div class="brand"><span class="dot"></span>随机点名器</div>
-  <div class="header-actions">
-    <button class="hbtn" id="btnExport" title="导出名单为 txt">导出名单</button>
-    <button class="hbtn danger" id="btnClearAll" title="清空全部名单">清空名单</button>
-    <button class="hbtn primary" id="btnToggleSide" style="display:none">名单</button>
-  </div>
-</header>
-
-<div class="main">
-  <!-- 舞台 -->
-  <section class="stage">
-    <div class="mode-tag" id="modeTag">可重复抽取</div>
-    <div class="name-display" id="display">准备就绪</div>
-    <div class="hint" id="hint">在右侧录入名单后，点击按钮开始</div>
-    <button class="roll-btn" id="rollBtn">开始<span class="sub">START</span></button>
-    <div class="stats">
-      <span>总人数 <b id="statTotal">0</b></span>
-      <span>已抽 <b id="statUsed">0</b></span>
-      <span>剩余 <b id="statLeft">0</b></span>
+<div class="app">
+  <main class="stage">
+    <button class="sidebar-toggle" id="sidebarToggle" title="切换侧栏（空格键也可开始）">≡</button>
+    <div class="stage-content">
+      <div class="name-display size-medium" id="displayName">准备就绪</div>
+      <button class="start-btn" id="startBtn">开始</button>
     </div>
-  </section>
+    <div class="stage-hint" id="stageHint"></div>
+  </main>
 
-  <!-- 侧栏 -->
-  <aside class="side">
-    <div class="side-section">
-      <div class="side-title">添加单个姓名</div>
-      <div class="row">
-        <input class="input" id="singleInput" placeholder="输入姓名后回车" maxlength="20">
-        <button class="sbtn accent" id="btnAddSingle">添加</button>
-      </div>
-    </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
 
-    <div class="side-section">
-      <div class="side-title">批量导入</div>
-      <div class="row" style="margin-bottom:8px">
-        <textarea class="input" id="batchInput" placeholder="每行一个姓名，或用逗号 / 顿号分隔"></textarea>
-      </div>
-      <div class="row">
-        <button class="sbtn" id="btnBatch">粘贴导入</button>
-        <button class="sbtn" id="btnFile">读取文件（txt / csv）</button>
-        <input type="file" id="fileInput" accept=".txt,.csv,.tsv" hidden>
-      </div>
-    </div>
+      <!-- 抽取设置 -->
+      <div class="section" data-key="settings">
+        <button class="section-head" data-toggle="settings">
+          <span class="section-title">抽取设置</span>
+          <span class="section-arrow">▼</span>
+        </button>
+        <div class="section-body">
+          <div class="section-inner">
+            <label class="switch-row">
+              <span class="switch-label">不重复抽取</span>
+              <input type="checkbox" id="noRepeat" class="switch-input">
+              <span class="switch"></span>
+            </label>
+            <label class="switch-row">
+              <span class="switch-label">语音播报</span>
+              <input type="checkbox" id="voiceToggle" class="switch-input">
+              <span class="switch"></span>
+            </label>
 
-    <div class="side-section">
-      <div class="side-title">抽取设置</div>
-      <div class="switch-row">
-        <span>不重复抽取（抽过的不再抽）</span>
-        <button class="switch" id="noRepeatSwitch" aria-label="不重复模式"></button>
-      </div>
-      <div class="switch-row" style="margin-top:12px">
-        <span>抽中后语音播报姓名</span>
-        <button class="switch" id="voiceSwitch" aria-label="语音播报"></button>
-      </div>
-      <div class="row" style="margin-top:12px">
-        <button class="sbtn sm" id="btnResetUsed">重置已抽记录</button>
-      </div>
-    </div>
+            <!-- 更多设置（二级折叠） -->
+            <div class="sub-collapse collapsed" id="moreSettings">
+              <button class="sub-head" id="moreSettingsHead">
+                <span class="section-title">更多设置</span>
+                <span class="section-arrow">▼</span>
+              </button>
+              <div class="sub-body">
+                <div class="sub-inner">
+                  <div class="config-row">
+                    <div class="config-label">
+                      <span>点名时长</span>
+                      <span class="config-value" id="durationValue">2.8 秒</span>
+                    </div>
+                    <input type="range" id="durationSlider" min="0" max="10" step="0.2" value="2.8">
+                  </div>
 
-    <div class="side-title" style="padding:14px 18px 0">名单（<span id="listCount">0</span>）· 自动保存在本机</div>
-    <div class="name-list" id="nameList"></div>
+                  <div class="config-row">
+                    <div class="config-label"><span>语音语速</span></div>
+                    <div class="segment" data-config="voiceRate">
+                      <button data-value="0.8">慢</button>
+                      <button data-value="1" class="active">正常</button>
+                      <button data-value="1.2">快</button>
+                    </div>
+                  </div>
 
-    <div class="side-section" style="border-bottom:none">
-      <div class="side-title">本轮历史
-        <button class="sbtn sm" id="btnClearHistory" style="padding:2px 8px">清空</button>
+                  <div class="config-row">
+                    <div class="config-label"><span>舞台字号</span></div>
+                    <div class="segment" data-config="fontSize">
+                      <button data-value="small">小</button>
+                      <button data-value="medium" class="active">中</button>
+                      <button data-value="large">大</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="history-list" id="historyList"><div class="empty-tip">暂无抽取记录</div></div>
+
+      <!-- 名单 -->
+      <div class="section" data-key="preview">
+        <button class="section-head" data-toggle="preview">
+          <span class="section-title">名单</span>
+          <span class="section-sub" id="previewCount">0 人</span>
+          <span class="section-arrow">▼</span>
+        </button>
+        <div class="section-body">
+          <div class="section-inner">
+            <div class="name-list" id="nameList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 本轮历史 -->
+      <div class="section" data-key="history">
+        <button class="section-head" data-toggle="history">
+          <span class="section-title">本轮历史</span>
+          <span class="section-sub" id="historyCount">0 条</span>
+          <span class="section-arrow">▼</span>
+        </button>
+        <div class="section-body">
+          <div class="section-inner">
+            <div class="history-tools">
+              <button class="btn btn-mini" id="resetRoundBtn" title="清空已抽记录与本轮历史，所有姓名重新参与抽取">重置本轮</button>
+            </div>
+            <div class="history-list" id="historyList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 添加名单（合并单个 + 批量） -->
+      <div class="section" data-key="add">
+        <button class="section-head" data-toggle="add">
+          <span class="section-title">添加名单</span>
+          <span class="section-arrow">▼</span>
+        </button>
+        <div class="section-body">
+          <div class="section-inner">
+            <div class="input-row">
+              <input type="text" id="singleInput" class="input-text" placeholder="输入姓名，回车添加">
+              <button class="btn btn-primary" id="singleAddBtn">添加</button>
+            </div>
+
+            <div class="bulk-hint">或批量粘贴</div>
+            <textarea id="bulkInput" class="input-area" placeholder="支持换行、逗号、顿号、分号、制表符等分隔"></textarea>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="bulkAddBtn">批量添加</button>
+              <button class="btn" id="fileBtn">读取文件</button>
+              <input type="file" id="fileInput" accept=".txt,.csv,.tsv" hidden>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="exportBtn">导出名单</button>
+        <button class="btn btn-danger" id="clearAllBtn">清空全部</button>
+      </div>
+
     </div>
   </aside>
 </div>
 
-<div id="toast"></div>
-
 <script>
-(function(){
-  const STORE_KEY = 'rollcall_names_v1';
-  const USED_KEY  = 'rollcall_used_v1';
-  const NOREPEAT_KEY = 'rollcall_norepeat_v1';
-  const VOICE_KEY = 'rollcall_voice_v1';
+(function () {
+  'use strict';
 
-  let names = load(STORE_KEY, []);
-  let used  = load(USED_KEY, []);
-  let noRepeat = load(NOREPEAT_KEY, false);
-  let voiceOn = load(VOICE_KEY, true);
+  var KEYS = {
+    names:    'rollcall.names.v1',
+    drawn:    'rollcall.drawn.v1',
+    history:  'rollcall.history.v1',
+    settings: 'rollcall.settings.v1',
+    ui:       'rollcall.ui.v1'
+  };
 
-  let rolling = false, timer = null;
+  var DEFAULTS = {
+    noRepeat: false,
+    voice: true,
+    rollDuration: 2.8,
+    voiceRate: 1,
+    fontSize: 'medium',
+    moreSettings: false
+  };
 
-  const $ = id => document.getElementById(id);
-  const display = $('display'), hint = $('hint'), rollBtn = $('rollBtn');
+  var state = {
+    names: [],
+    drawn: [],
+    history: [],
+    noRepeat: DEFAULTS.noRepeat,
+    voice: DEFAULTS.voice,
+    rollDuration: DEFAULTS.rollDuration,
+    voiceRate: DEFAULTS.voiceRate,
+    fontSize: DEFAULTS.fontSize,
+    moreSettings: DEFAULTS.moreSettings,
+    ui: {
+      sidebar: true,
+      sections: { settings: true, preview: false, history: false, add: true }
+    }
+  };
 
-  function load(key, def){
-    try{ const v = JSON.parse(localStorage.getItem(key)); return v == null ? def : v; }
-    catch(e){ return def; }
+  var isRolling = false;
+  var hintTimer = null;
+
+  var el = {};
+  function $(id) { return document.getElementById(id); }
+
+  function cacheEls() {
+    el.sidebar        = $('sidebar');
+    el.sidebarToggle  = $('sidebarToggle');
+    el.displayName    = $('displayName');
+    el.startBtn       = $('startBtn');
+    el.stageHint      = $('stageHint');
+    el.nameList       = $('nameList');
+    el.previewCount   = $('previewCount');
+    el.historyList    = $('historyList');
+    el.historyCount   = $('historyCount');
+    el.resetRoundBtn  = $('resetRoundBtn');
+    el.noRepeat       = $('noRepeat');
+    el.voiceToggle    = $('voiceToggle');
+    el.moreSettings   = $('moreSettings');
+    el.moreSettingsHead = $('moreSettingsHead');
+    el.durationSlider = $('durationSlider');
+    el.durationValue  = $('durationValue');
+    el.bulkInput      = $('bulkInput');
+    el.bulkAddBtn     = $('bulkAddBtn');
+    el.fileBtn        = $('fileBtn');
+    el.fileInput      = $('fileInput');
+    el.singleInput    = $('singleInput');
+    el.singleAddBtn   = $('singleAddBtn');
+    el.exportBtn      = $('exportBtn');
+    el.clearAllBtn    = $('clearAllBtn');
   }
-  function save(){
-    localStorage.setItem(STORE_KEY, JSON.stringify(names));
-    localStorage.setItem(USED_KEY, JSON.stringify(used));
-    localStorage.setItem(NOREPEAT_KEY, JSON.stringify(noRepeat));
-    localStorage.setItem(VOICE_KEY, JSON.stringify(voiceOn));
+
+  /* ---------- 持久化 ---------- */
+  function readJSON(key, fallback) {
+    try {
+      var v = localStorage.getItem(key);
+      if (v == null) return fallback;
+      var parsed = JSON.parse(v);
+      return parsed == null ? fallback : parsed;
+    } catch (e) { return fallback; }
   }
-  function toast(msg){
-    const t = $('toast'); t.textContent = msg; t.classList.add('show');
-    clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 1800);
+  function writeJSON(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+  }
+
+  function load() {
+    var n = readJSON(KEYS.names, []);
+    if (Array.isArray(n)) state.names = n.filter(function (x) { return typeof x === 'string'; });
+
+    var d = readJSON(KEYS.drawn, []);
+    if (Array.isArray(d)) state.drawn = d.filter(function (x) { return typeof x === 'string'; });
+
+    var h = readJSON(KEYS.history, []);
+    if (Array.isArray(h)) {
+      state.history = h.filter(function (x) {
+        return x && typeof x.name === 'string' && typeof x.time === 'number';
+      });
+    }
+
+    var s = readJSON(KEYS.settings, {});
+    if (typeof s.noRepeat === 'boolean') state.noRepeat = s.noRepeat;
+    if (typeof s.voice === 'boolean') state.voice = s.voice;
+    if (typeof s.rollDuration === 'number' && s.rollDuration >= 0 && s.rollDuration <= 10) {
+      state.rollDuration = s.rollDuration;
+    }
+    if (s.voiceRate === 0.8 || s.voiceRate === 1 || s.voiceRate === 1.2) {
+      state.voiceRate = s.voiceRate;
+    }
+    if (s.fontSize === 'small' || s.fontSize === 'medium' || s.fontSize === 'large') {
+      state.fontSize = s.fontSize;
+    }
+    if (typeof s.moreSettings === 'boolean') state.moreSettings = s.moreSettings;
+
+    var ui = readJSON(KEYS.ui, {});
+    if (typeof ui.sidebar === 'boolean') state.ui.sidebar = ui.sidebar;
+    if (ui.sections && typeof ui.sections === 'object') {
+      Object.keys(state.ui.sections).forEach(function (k) {
+        if (typeof ui.sections[k] === 'boolean') state.ui.sections[k] = ui.sections[k];
+      });
+    }
+
+    if (state.names.length === 0) state.ui.sections.add = true;
+  }
+
+  function save() {
+    writeJSON(KEYS.names, state.names);
+    writeJSON(KEYS.drawn, state.drawn);
+    writeJSON(KEYS.history, state.history);
+    writeJSON(KEYS.settings, {
+      noRepeat: state.noRepeat,
+      voice: state.voice,
+      rollDuration: state.rollDuration,
+      voiceRate: state.voiceRate,
+      fontSize: state.fontSize,
+      moreSettings: state.moreSettings
+    });
+    writeJSON(KEYS.ui, state.ui);
+  }
+
+  /* ---------- UI 应用 ---------- */
+  function setSegmentActive(container, value) {
+    if (!container) return;
+    var btns = container.querySelectorAll('button');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('active', btns[i].getAttribute('data-value') === String(value));
+    }
+  }
+
+  function formatDuration(sec) {
+    if (sec <= 0) return '跳过动画';
+    return sec.toFixed(1) + ' 秒';
+  }
+
+  function applyUI() {
+    el.sidebar.classList.toggle('collapsed', !state.ui.sidebar);
+
+    var sections = document.querySelectorAll('.section[data-key]');
+    for (var i = 0; i < sections.length; i++) {
+      var sec = sections[i];
+      var key = sec.getAttribute('data-key');
+      sec.classList.toggle('collapsed', !state.ui.sections[key]);
+    }
+
+    el.noRepeat.checked = state.noRepeat;
+    el.voiceToggle.checked = state.voice;
+
+    el.durationSlider.value = state.rollDuration;
+    el.durationValue.textContent = formatDuration(state.rollDuration);
+
+    setSegmentActive(document.querySelector('[data-config="voiceRate"]'), state.voiceRate);
+    setSegmentActive(document.querySelector('[data-config="fontSize"]'), state.fontSize);
+
+    el.displayName.classList.remove('size-small', 'size-medium', 'size-large');
+    el.displayName.classList.add('size-' + state.fontSize);
+
+    // 更多设置折叠
+    el.moreSettings.classList.toggle('collapsed', !state.moreSettings);
+  }
+
+  function toggleSection(key) {
+    if (!(key in state.ui.sections)) return;
+    state.ui.sections[key] = !state.ui.sections[key];
+    save();
+    applyUI();
+  }
+
+  function toggleMoreSettings() {
+    state.moreSettings = !state.moreSettings;
+    save();
+    applyUI();
   }
 
   /* ---------- 渲染 ---------- */
-  function render(){
-    // 统计
-    const usedSet = new Set(used);
-    const left = noRepeat ? names.filter(n=>!usedSet.has(n)).length : names.length;
-    $('statTotal').textContent = names.length;
-    $('statUsed').textContent = used.length;
-    $('statLeft').textContent = left;
-    $('listCount').textContent = names.length;
-    $('modeTag').textContent = noRepeat ? '不重复抽取' : '可重复抽取';
-    $('noRepeatSwitch').classList.toggle('on', noRepeat);
-    $('voiceSwitch').classList.toggle('on', voiceOn);
-
-    // 名单 chips
-    const list = $('nameList');
-    if(!names.length){
-      list.innerHTML = '<div class="empty-tip">名单为空<br>请先添加或导入姓名</div>';
-    } else {
-      list.innerHTML = names.map((n,i)=>{
-        const u = usedSet.has(n) ? 'used' : '';
-        return `<span class="chip ${u}">${escapeHtml(n)}<button data-i="${i}" title="删除">×</button></span>`;
-      }).join('');
-      list.querySelectorAll('button').forEach(b=>{
-        b.onclick = ()=>{ names.splice(+b.dataset.i,1); used = used.filter(x=>x!==names[+b.dataset.i]); save(); render(); };
-      });
-    }
-    save();
-  }
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  /* ---------- 添加 ---------- */
-  function addNames(arr){
-    const fresh = arr.map(s=>s.trim()).filter(Boolean);
-    if(!fresh.length){ toast('没有可添加的姓名'); return 0; }
-    let added = 0;
-    fresh.forEach(n=>{
-      if(!names.includes(n)){ names.push(n); added++; }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
-    render();
-    toast(`添加 ${added} 人，跳过重复 ${fresh.length-added} 人`);
-    return added;
-  }
-  $('singleInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addSingle(); });
-  function addSingle(){
-    const v = $('singleInput').value;
-    if(addNames([v]) > 0) $('singleInput').value = '';
-  }
-  $('btnAddSingle').onclick = addSingle;
-
-  $('btnBatch').onclick = ()=>{
-    const raw = $('batchInput').value;
-    const arr = raw.split(/[\n,，、;；\t]+/);
-    if(addNames(arr) > 0) $('batchInput').value = '';
-  };
-
-  $('btnFile').onclick = ()=> $('fileInput').click();
-  $('fileInput').onchange = e=>{
-    const f = e.target.files[0]; if(!f) return;
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      const arr = String(reader.result).split(/[\n,，、;；\t\r]+/);
-      addNames(arr);
-    };
-    reader.readAsText(f);
-    e.target.value = '';
-  };
-
-  /* ---------- 设置 ---------- */
-  $('noRepeatSwitch').onclick = ()=>{ noRepeat = !noRepeat; save(); render(); toast(noRepeat?'不重复模式已开启':'可重复模式'); };
-  $('voiceSwitch').onclick = ()=>{
-    voiceOn = !voiceOn; save(); render();
-    if(voiceOn){ speak('语音播报已开启'); }
-    else { try{ speechSynthesis.cancel(); }catch(e){} toast('语音播报已关闭'); }
-  };
-  $('btnResetUsed').onclick = ()=>{ used = []; save(); render(); toast('已抽记录已重置'); };
-  $('btnClearHistory').onclick = ()=>{ $('historyList').innerHTML='<div class="empty-tip">暂无抽取记录</div>'; };
-
-  $('btnClearAll').onclick = ()=>{
-    if(!names.length){ toast('名单已是空的'); return; }
-    if(confirm('确定清空全部名单与抽取记录？此操作不可恢复。')){
-      names = []; used = []; render();
-      display.textContent = '准备就绪'; display.className = 'name-display';
-      hint.textContent = '请先添加或导入姓名';
-    }
-  };
-  $('btnExport').onclick = ()=>{
-    if(!names.length){ toast('名单为空'); return; }
-    const blob = new Blob([names.join('\n')], {type:'text/plain;charset=utf-8'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = '名单.txt';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
-  /* ---------- 点名 ---------- */
-  function pool(){
-    if(!noRepeat) return names.slice();
-    const usedSet = new Set(used);
-    return names.filter(n=>!usedSet.has(n));
   }
 
-  function startRoll(){
-    if(rolling) return;
-    if(!names.length){ toast('请先添加或导入名单'); return; }
-    const p = pool();
-    if(!p.length){
-      if(noRepeat) toast('所有人都已抽完，点击"重置已抽记录"重新开始');
+  function renderNameList() {
+    el.previewCount.textContent = state.names.length + ' 人';
+    if (state.names.length === 0) {
+      el.nameList.innerHTML = '<div class="empty-hint">暂无名单</div>';
       return;
     }
-    rolling = true;
-    rollBtn.disabled = true;
-    display.classList.add('rolling');
-    hint.textContent = '';
-    try{ speechSynthesis.cancel(); }catch(e){}
+    var html = '';
+    for (var i = 0; i < state.names.length; i++) {
+      var name = state.names[i];
+      var isDrawn = state.drawn.indexOf(name) >= 0;
+      html += '<span class="name-chip' + (isDrawn ? ' drawn' : '') + '">'
+            + escapeHtml(name)
+            + '<span class="remove" data-remove="' + escapeHtml(name) + '">×</span>'
+            + '</span>';
+    }
+    el.nameList.innerHTML = html;
+  }
 
-    // 缓动：前快后慢，约 2.8s
-    const duration = 2800;
-    const start = performance.now();
-    let last = 0;
-    function frame(now){
-      const t = (now - start) / duration;
-      if(t >= 1){ finish(); return; }
-      // 间隔从 40ms 逐渐增到 220ms
-      const interval = 40 + t*t*t * 200;
-      if(now - last >= interval){
-        last = now;
-        const r = p[Math.floor(Math.random()*p.length)];
-        display.textContent = r;
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function renderHistory() {
+    el.historyCount.textContent = state.history.length + ' 条';
+    if (state.history.length === 0) {
+      el.historyList.innerHTML = '<div class="empty-hint">暂无记录</div>';
+      return;
+    }
+    var html = '';
+    for (var i = state.history.length - 1; i >= 0; i--) {
+      var item = state.history[i];
+      var d = new Date(item.time);
+      var t = pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+      html += '<div class="history-item">'
+            +   '<span class="name">' + escapeHtml(item.name) + '</span>'
+            +   '<span class="time">' + t + '</span>'
+            + '</div>';
+    }
+    el.historyList.innerHTML = html;
+  }
+
+  function updateStageHint() {
+    var total = state.names.length;
+    if (total === 0) {
+      el.stageHint.textContent = '请先在右侧添加名单';
+      return;
+    }
+    if (state.noRepeat) {
+      var drawn = state.drawn.length;
+      el.stageHint.textContent = '共 ' + total + ' 人 · 已抽 ' + drawn + ' · 剩余 ' + (total - drawn);
+    } else {
+      el.stageHint.textContent = '共 ' + total + ' 人';
+    }
+  }
+
+  function renderAll() {
+    renderNameList();
+    renderHistory();
+    updateStageHint();
+  }
+
+  function flashHint(msg, isError) {
+    if (hintTimer) clearTimeout(hintTimer);
+    el.stageHint.textContent = msg;
+    el.stageHint.style.color = isError ? 'var(--danger)' : 'var(--gold)';
+    hintTimer = setTimeout(function () {
+      el.stageHint.style.color = '';
+      updateStageHint();
+    }, 1600);
+  }
+
+  /* ---------- 名单操作 ---------- */
+  function parseNames(text) {
+    var parts = String(text).split(/[\n\r,，、;；\t]+/);
+    var result = [];
+    var seen = {};
+    var i;
+    for (i = 0; i < state.names.length; i++) seen[state.names[i]] = true;
+    for (i = 0; i < parts.length; i++) {
+      var name = parts[i].trim();
+      if (!name) continue;
+      if (seen[name]) continue;
+      seen[name] = true;
+      result.push(name);
+    }
+    return result;
+  }
+
+  function addNames(newNames) {
+    if (!newNames || newNames.length === 0) return 0;
+    var wasEmpty = state.names.length === 0;
+    for (var i = 0; i < newNames.length; i++) state.names.push(newNames[i]);
+
+    if (wasEmpty && state.names.length > 0) {
+      state.ui.sections.add = false;
+      state.ui.sections.preview = true;
+      state.ui.sections.history = true;
+    }
+    save();
+    applyUI();
+    renderAll();
+    return newNames.length;
+  }
+
+  function removeName(name) {
+    var idx = state.names.indexOf(name);
+    if (idx < 0) return;
+    state.names.splice(idx, 1);
+    var di = state.drawn.indexOf(name);
+    if (di >= 0) state.drawn.splice(di, 1);
+    save();
+    renderAll();
+  }
+
+  /* ---------- 语音 ---------- */
+  function stopSpeak() {
+    if ('speechSynthesis' in window) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+  }
+
+  function speak(text) {
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-CN';
+      u.rate = state.voiceRate;
+      u.pitch = 1;
+      u.volume = 1;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  /* ---------- 抽取 ---------- */
+  function getPool() {
+    if (!state.noRepeat) return state.names.slice();
+    return state.names.filter(function (n) { return state.drawn.indexOf(n) < 0; });
+  }
+
+  function finalize(winner) {
+    el.displayName.textContent = winner;
+    el.displayName.classList.remove('rolling');
+    el.displayName.classList.add('winner');
+
+    if (state.noRepeat && state.drawn.indexOf(winner) < 0) {
+      state.drawn.push(winner);
+    }
+    state.history.push({ name: winner, time: Date.now() });
+    save();
+    renderAll();
+
+    if (state.voice) speak(winner);
+
+    isRolling = false;
+    el.startBtn.disabled = false;
+  }
+
+  function roll() {
+    if (isRolling) return;
+    if (state.names.length === 0) { flashHint('请先添加名单', true); return; }
+
+    var pool = getPool();
+    if (pool.length === 0) { flashHint('全部抽完，请重置本轮', true); return; }
+
+    isRolling = true;
+    el.startBtn.disabled = true;
+    stopSpeak();
+
+    el.displayName.classList.remove('winner');
+    el.displayName.classList.add('rolling');
+
+    var winner = pool[Math.floor(Math.random() * pool.length)];
+    var durationMs = Math.max(0, state.rollDuration * 1000);
+
+    if (durationMs === 0) {
+      finalize(winner);
+      return;
+    }
+
+    var start = performance.now();
+    var lastChange = 0;
+
+    function frame(now) {
+      var elapsed = now - start;
+      var progress = Math.min(elapsed / durationMs, 1);
+
+      if (progress >= 1) { finalize(winner); return; }
+
+      var eased = Math.pow(progress, 3);
+      var interval = 30 + eased * 550;
+
+      if (now - lastChange >= interval) {
+        lastChange = now;
+        var display = progress > 0.94 ? winner : pool[Math.floor(Math.random() * pool.length)];
+        el.displayName.textContent = display;
       }
       requestAnimationFrame(frame);
     }
+
     requestAnimationFrame(frame);
   }
 
-  function finish(){
-    const p = pool();
-    const chosen = p[Math.floor(Math.random()*p.length)];
-    display.textContent = chosen;
-    display.classList.remove('rolling');
-    display.classList.add('picked');
-    rollBtn.disabled = false;
-    rolling = false;
-    hint.textContent = '恭喜！';
-
-    used.push(chosen);
-    render();
-    addHistory(chosen);
-    speak(chosen);
+  /* ---------- 重置本轮（无确认） ---------- */
+  function resetRound() {
+    if (state.drawn.length === 0 && state.history.length === 0) {
+      flashHint('暂无可重置的记录');
+      return;
+    }
+    state.drawn = [];
+    state.history = [];
+    save();
+    renderNameList();
+    renderHistory();
+    updateStageHint();
+    flashHint('已重置本轮');
   }
 
-  function speak(text){
-    if(!voiceOn || !('speechSynthesis' in window)) return;
-    try{
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'zh-CN';
-      u.rate = 0.95;
-      u.pitch = 1.0;
-      const vs = speechSynthesis.getVoices();
-      const zh = vs.find(v => /zh[-_]?CN/i.test(v.lang)) || vs.find(v => /chinese|中文|普通话/i.test(v.name));
-      if(zh) u.voice = zh;
-      speechSynthesis.speak(u);
-    }catch(e){}
+  /* ---------- 导出 ---------- */
+  function exportNames() {
+    if (state.names.length === 0) { flashHint('名单为空', true); return; }
+    var text = state.names.join('\n');
+    var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '名单.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
-  function addHistory(name){
-    const box = $('historyList');
-    const first = box.querySelector('.empty-tip');
-    if(first) first.remove();
-    const div = document.createElement('div');
-    div.className = 'h-item';
-    const time = new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-    div.innerHTML = `<b></b><span>${time}</span>`;
-    div.querySelector('b').textContent = name;
-    box.insertBefore(div, box.firstChild);
+  /* ---------- 事件绑定 ---------- */
+  function bind() {
+    el.sidebarToggle.addEventListener('click', function () {
+      state.ui.sidebar = !state.ui.sidebar;
+      save();
+      applyUI();
+    });
+
+    var heads = document.querySelectorAll('[data-toggle]');
+    for (var i = 0; i < heads.length; i++) {
+      (function (btn) {
+        btn.addEventListener('click', function () {
+          toggleSection(btn.getAttribute('data-toggle'));
+        });
+      })(heads[i]);
+    }
+
+    // 更多设置折叠
+    el.moreSettingsHead.addEventListener('click', toggleMoreSettings);
+
+    el.startBtn.addEventListener('click', roll);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.code !== 'Space' && e.key !== ' ') return;
+      var tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      if (!isRolling) roll();
+    });
+
+    el.noRepeat.addEventListener('change', function () {
+      state.noRepeat = el.noRepeat.checked;
+      save();
+      renderNameList();
+      updateStageHint();
+    });
+
+    el.voiceToggle.addEventListener('change', function () {
+      state.voice = el.voiceToggle.checked;
+      save();
+      if (!state.voice) stopSpeak();
+    });
+
+    el.durationSlider.addEventListener('input', function () {
+      state.rollDuration = parseFloat(el.durationSlider.value) || 0;
+      el.durationValue.textContent = formatDuration(state.rollDuration);
+      save();
+    });
+
+    var segments = document.querySelectorAll('.segment[data-config]');
+    for (var j = 0; j < segments.length; j++) {
+      (function (seg) {
+        seg.addEventListener('click', function (e) {
+          var btn = e.target.closest ? e.target.closest('button[data-value]') : null;
+          if (!btn) return;
+          var cfg = seg.getAttribute('data-config');
+          var val = btn.getAttribute('data-value');
+
+          if (cfg === 'voiceRate') {
+            state.voiceRate = parseFloat(val) || 1;
+          } else if (cfg === 'fontSize') {
+            state.fontSize = val;
+          }
+          setSegmentActive(seg, val);
+          save();
+
+          if (cfg === 'fontSize') {
+            el.displayName.classList.remove('size-small', 'size-medium', 'size-large');
+            el.displayName.classList.add('size-' + state.fontSize);
+          }
+        });
+      })(segments[j]);
+    }
+
+    el.bulkAddBtn.addEventListener('click', function () {
+      var names = parseNames(el.bulkInput.value);
+      if (names.length === 0) { flashHint('没有可添加的新姓名', true); return; }
+      addNames(names);
+      el.bulkInput.value = '';
+      flashHint('已添加 ' + names.length + ' 人');
+    });
+
+    el.fileBtn.addEventListener('click', function () { el.fileInput.click(); });
+    el.fileInput.addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var names = parseNames(String(reader.result || ''));
+        if (names.length === 0) { flashHint('文件中没有新的姓名', true); return; }
+        addNames(names);
+        flashHint('已导入 ' + names.length + ' 人');
+      };
+      reader.onerror = function () { flashHint('读取文件失败', true); };
+      reader.readAsText(file, 'utf-8');
+    });
+
+    function addSingle() {
+      var v = el.singleInput.value.trim();
+      if (!v) return;
+      if (state.names.indexOf(v) >= 0) {
+        flashHint('姓名已存在', true);
+        el.singleInput.value = '';
+        return;
+      }
+      addNames([v]);
+      el.singleInput.value = '';
+      el.singleInput.focus();
+      flashHint('已添加：' + v);
+    }
+    el.singleAddBtn.addEventListener('click', addSingle);
+    el.singleInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addSingle(); }
+    });
+
+    el.nameList.addEventListener('click', function (e) {
+      var target = e.target;
+      if (!target) return;
+      var btn = target.closest ? target.closest('[data-remove]') : null;
+      if (!btn) return;
+      removeName(btn.getAttribute('data-remove'));
+    });
+
+    el.resetRoundBtn.addEventListener('click', resetRound);
+    el.exportBtn.addEventListener('click', exportNames);
+
+    el.clearAllBtn.addEventListener('click', function () {
+      if (state.names.length === 0 && state.history.length === 0) {
+        flashHint('没有可清空的数据');
+        return;
+      }
+      if (!confirm('确定清空名单、已抽记录和历史？此操作不可撤销。')) return;
+      state.names = [];
+      state.drawn = [];
+      state.history = [];
+      state.ui.sections.add = true;
+      state.ui.sections.preview = false;
+      state.ui.sections.history = false;
+      stopSpeak();
+      el.displayName.textContent = '准备就绪';
+      el.displayName.classList.remove('winner', 'rolling');
+      save();
+      applyUI();
+      renderAll();
+      flashHint('已清空');
+    });
   }
 
-  rollBtn.onclick = startRoll;
+  /* ---------- 启动 ---------- */
+  function init() {
+    cacheEls();
+    load();
+    applyUI();
+    renderAll();
+    bind();
+  }
 
-  /* ---------- 初始化 ---------- */
-  render();
-  if(names.length){
-    display.textContent = `共 ${names.length} 人`;
-    hint.textContent = '点击按钮开始点名';
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 })();
 </script>
